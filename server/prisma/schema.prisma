@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "ADMIN" or "STUDENT"
+  greenPoints Int    @default(0)
+  registerNumber String? @unique
+  department String?
+  year      String?
+  createdAt DateTime @default(now())
+  ideas     InnovationIdea[]
+  submissions Submission[]
+  enrollments Enrollment[]
+  quizResults QuizResult[]
+  equipmentBookings EquipmentBooking[]
+  products         Product[] @relation("ProductSeller")
+  orders           Order[]   @relation("ProductBuyer")
+  productReviews   ProductReview[]
+  notifications    Notification[]
+}
+
+model Course {
+  id          Int      @id @default(autoincrement())
+  title       String
+  code        String   @unique
+  instructor  String
+  duration    Int      // Weeks
+  description String
+  category    String   @default("General")
+  status      String   @default("Active") // "Active" or "Inactive"
+  objectives  String?
+  content     String?   // Can be JSON or text with links
+  quizzes     Quiz[]
+  assignments Assignment[]
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  student   User     @relation(fields: [studentId], references: [id])
+  studentId Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  progress  Int      @default(0) // Percentage
+  @@unique([studentId, courseId])
+}
+
+model Quiz {
+  id        Int      @id @default(autoincrement())
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  title     String
+  questions String   // JSON string of questions/answers
+  deadline  DateTime
+  marks     Int
+  results   QuizResult[]
+}
+
+model QuizResult {
+  id        Int      @id @default(autoincrement())
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  quizId    Int
+  student   User     @relation(fields: [studentId], references: [id])
+  studentId Int
+  score     Int
+  at        DateTime @default(now())
+}
+
+model Assignment {
+  id          Int      @id @default(autoincrement())
+  course      Course   @relation(fields: [courseId], references: [id])
+  courseId    Int
+  title       String
+  type        String   @default("upload") // "quiz" or "upload"
+  description String?
+  totalMarks  Int      @default(0)
+  deadline    DateTime
+  timeLimit   Int?     // In minutes, optional for quizzes
+  questions   QuizQuestion[]
+  submissions Submission[]
+}
+
+model QuizQuestion {
+  id           Int        @id @default(autoincrement())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  assignmentId Int
+  question     String
+  type         String     // "MCQ" or "TRUE_FALSE"
+  option1      String?
+  option2      String?
+  option3      String?
+  option4      String?
+  correctAnswer String
+  marks        Int        @default(1)
+}
+
+model Submission {
+  id           Int      @id @default(autoincrement())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  assignmentId Int
+  student      User     @relation(fields: [studentId], references: [id])
+  studentId    Int
+  fileUrl      String?
+  score        Int?
+  feedback     String?
+  status       String   @default("PENDING") // "PENDING", "SUBMITTED", "GRADED"
+  submittedAt  DateTime @default(now())
+}
+
+model InnovationIdea {
+  id             Int      @id @default(autoincrement())
+  student        User     @relation(fields: [studentId], references: [id])
+  studentId      Int
+  title          String
+  problem        String
+  solution       String
+  impact         String
+  budget         Float
+  category       String   @default("General") // "Renewable Energy", "Waste Management", etc.
+  supportingDoc  String?
+  status         String   @default("Pending") // "Pending", "Approved", "Rejected", "Completed"
+  adminFeedback  String?
+  reviewedBy     Int?     // Admin user ID
+  reviewedAt     DateTime?
+  fundingAmount  Float?
+  createdAt      DateTime @default(now())
+}
+
+model Activity {
+  id          Int      @id @default(autoincrement())
+  type        String   // "INNOVATION_SUBMIT", "INNOVATION_FUNDED", "STUDENT_REGISTER"
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model SustainabilityTracker {
+  id           Int      @id @default(autoincrement())
+  studentId    Int
+  type         String   // "WATER", "WASTE", "CARBON"
+  data         String   // JSON string of tracking data
+  date         DateTime @default(now())
+}
+
+model Classroom {
+  id          Int      @id @default(autoincrement())
+  roomNumber  String   @unique
+  capacity    Int
+  building    String
+  availability Boolean @default(true)
+  schedules   ClassSchedule[]
+  energyUsage EnergyUsage[]
+}
+
+model ClassSchedule {
+  id          Int      @id @default(autoincrement())
+  courseName  String
+  studentsCount Int
+  startTime   DateTime
+  endTime     DateTime
+  dayOfWeek   String
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  classroomId Int
+}
+
+model Equipment {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    String   // "3D Printer", "Robotics Kit", etc.
+  description String?
+  status      String   @default("Available") // "Available", "Under Maintenance"
+  bookings    EquipmentBooking[]
+}
+
+model EquipmentBooking {
+  id          Int      @id @default(autoincrement())
+  student     User     @relation(fields: [studentId], references: [id])
+  studentId   Int
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId Int
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED", "COMPLETED"
+  createdAt   DateTime @default(now())
+}
+
+model EnergyUsage {
+  id          Int      @id @default(autoincrement())
+  classroom   Classroom? @relation(fields: [classroomId], references: [id])
+  classroomId Int?
+  labName     String?   // For labs that aren't mapped as a 'Classroom' model yet or generic lab areas
+  consumption Float     // In kWh
+  date        DateTime @default(now())
+  recordedBy  Int       // Admin ID
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  category    String   // "Recycled", "Organic", "Reusable", etc.
+  imageUrl    String?
+  seller      User     @relation("ProductSeller", fields: [sellerId], references: [id])
+  sellerId    Int
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  condition   String?  // e.g., "New", "Used - Good"
+  ecoPoints   Int      @default(10) // Points awarded for buying/selling this
+  createdAt   DateTime @default(now())
+  
+  orders      Order[]
+  reviews     ProductReview[]
+}
+
+model Order {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  buyer       User     @relation("ProductBuyer", fields: [buyerId], references: [id])
+  buyerId     Int
+  status      String   @default("REQUESTED") // REQUESTED, APPROVED, COMPLETED, CANCELLED
+  createdAt   DateTime @default(now())
+}
+
+model ProductReview {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  reviewer    User     @relation(fields: [reviewerId], references: [id])
+  reviewerId  Int
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  message     String
+  type        String   // PRODUCT_APPROVED, NEW_ORDER, ORDER_UPDATE, NEW_PRODUCT
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
