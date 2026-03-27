@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://sustainable-acadmic-management-system-krq8.onrender.com/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://sustainable-acadmic-management-system-krq6.onrender.com/api',
 });
 
 // Add a request interceptor to include the auth token
